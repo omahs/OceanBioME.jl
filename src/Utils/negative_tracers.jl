@@ -91,15 +91,15 @@ end
     t, p = 0.0, 0.0
     @unroll for field in fields
         if field == fields[:P]            # refer to Carbon conservation equations 
-            scalor = Rdᵖ * (1 + ρᶜᵃᶜᵒ³)
+            n2c_ratio = Rdᵖ * (1 + ρᶜᵃᶜᵒ³)
         elseif field == fields[:Z]
-            scalor = Rdᵖ
+            n2c_ratio = Rdᵖ
         else
-            scalor = 1            
+            n2c_ratio = 1.0            
         end
-        t += @inbounds field[i, j, k] * scalor
+        t += @inbounds field[i, j, k] * n2c_ratio
         if field[i, j, k] > 0
-            p += @inbounds field[i, j, k] * scalor
+            p += @inbounds field[i, j, k] * n2c_ratio
         end
     end 
     @unroll for field in fields

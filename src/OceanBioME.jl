@@ -13,7 +13,7 @@ export TwoBandPhotosyntheticallyActiveRatiation, update_PAR!
 # Utilities
 export Boundaries, update_timestep!, Budget, Sediments, GasExchange
 # Positivity preservaiton utilities
-export zero_negative_tracers!, error_on_neg!, warn_on_neg!, scale_negative_tracers!
+export zero_negative_tracers!, error_on_neg!, warn_on_neg!, scale_negative_tracers!, scale_negative_tracers_carbon!
 # Oceananigans extensions
 export ColumnField, isacolumn
 
