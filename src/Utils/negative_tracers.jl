@@ -83,6 +83,36 @@ end
     end
 end
 
+
+@kernel function scale_for_negs_carbon!(fields, warn)
+    ρᶜᵃᶜᵒ³ = 0.1  #ρᶜᵃᶜᵒ³ = bgc.organic_carbon_calcate_ratio
+    Rdᵖ = 6.56  #Rdᵖ = bgc.phytoplankton_redfield
+    i, j, k = @index(Global, NTuple)
+    t, p = 0.0, 0.0
+    @unroll for field in fields
+        if field == fields[:P]            # refer to Carbon conservation equations 
+            scalor = Rdᵖ * (1 + ρᶜᵃᶜᵒ³)
+        elseif field == fields[:Z]
+            scalor = Rdᵖ
+        else
+            scalor = 1            
+        end
+        t += @inbounds field[i, j, k] * scalor
+        if field[i, j, k] > 0
+            p += @inbounds field[i, j, k] * scalor
+        end
+    end 
+    @unroll for field in fields
+        if @inbounds field[i, j, k]>0
+            @inbounds field[i, j, k] *= t/p
+        else
+            if warn @warn "Scaling negative" end
+            @inbounds field[i, j, k] = 0
+        end
+    end
+end
+
+
 """
     scale_negative_tracers!(sim, params=(conserved_group = (), warn=false))
 
@@ -103,3 +133,12 @@ function scale_negative_tracers!(model, params=(conserved_group = (), warn=false
     wait(event)
 end
 @inline scale_negative_tracers!(sim::Simulation, args...) = scale_negative_tracers!(sim.model, args...) 
+
+function scale_negative_tracers_carbon!(model, params=(conserved_group = (), warn=false)) #this can be used to conserve sub groups e.g. just saying NO₃ and NH₄ 
+    workgroup, worksize = work_layout(model.grid, :xyz)
+    scale_for_negs_kernel_carbon! = scale_for_negs_carbon!(device(model.grid.architecture), workgroup, worksize)
+    model_fields = fields(model)
+    event = scale_for_negs_kernel_carbon!(model_fields[params.conserved_group], params.warn)
+    wait(event)
+end
+@inline scale_negative_tracers_carbon!(sim::Simulation, args...) = scale_negative_tracers_carbon!(sim.model, args...) 
