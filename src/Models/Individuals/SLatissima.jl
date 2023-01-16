@@ -85,10 +85,10 @@ end
 ##### Growth equations
 #####
 
-function equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, u::AbstractFloat, params, Δt::AbstractFloat)
+function equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, DIC::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, u::AbstractFloat, params, Δt::AbstractFloat)
     if !iszero(A)
         irr /= 3.99e-10*545e12/(1day) #W/m²/s to einstein/m²/day
-        p = _p(T, irr, params)
+        p = _p(T, irr, params) * DIC / (DIC + 210)  # consider carbon limit photosynthesis
         e = _e(C, params)
         ν  = _ν(A, params)
 
@@ -140,13 +140,13 @@ function equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::Abst
 end
 
 #fixed urel, T and S functions
-equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, irr::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, params.T(x, y, z, t), params.S(x, y, z, t), irr, params.urel, params, Δt)
+equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, DIC::AbstractFloat, irr::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, DIC, params.T(x, y, z, t), params.S(x, y, z, t), irr, params.urel, params, Δt)
 #fixed urel, T and S fields
-equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, params.T(x, y, z, t), params.S(x, y, z, t), irr, params.urel, params, Δt)
+equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, DIC::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, DIC, params.T(x, y, z, t), params.S(x, y, z, t), irr, params.urel, params, Δt)
 #tracked u, T and S functions can not be done (like this) bcs same number of variables as main function
  #equations(x::AbstractFloat, y::AbstractFloat, z::Abstractparams.T(x, y, z, t)Float, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, irr::AbstractFloat, u::AbstractFloat, v::AbstractFloat, w::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, params.T(x, y, z, t), params.S(x, y, z, t), irr, sqrt(u^2+v^2+w^2), params, Δt)
 #tracked u, T and S fields
-equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, u::AbstractFloat, v::AbstractFloat, w::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, T, S, irr, sqrt(u^2+v^2+w^2), params, Δt)
+equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, DIC::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, u::AbstractFloat, v::AbstractFloat, w::AbstractFloat, params, Δt::AbstractFloat) = equations(x, y, z, t, A, N, C, NO₃, NH₄, DIC, T, S, irr, sqrt(u^2+v^2+w^2), params, Δt)
 
 #####
 ##### Parameters (some diagnostic so have to define before)
@@ -260,13 +260,14 @@ struct Particle{FT}
     #tracked fields
     NO₃  :: FT
     NH₄  :: FT
+    DIC  :: FT
     PAR :: FT
     T :: FT
     S :: FT
 end
 
 default_tracers = (NO₃ = :NO₃, PAR=:PAR) # tracer = property
-optional_tracer_dependencies = (NH₄ = :NH₄, )
+optional_tracer_dependencies = (NH₄ = :NH₄, DIC = :DIC,)
 default_coupling = (NO₃ = :j_NO₃, )    
 optional_tracer_coupling = (NH₄ = :j_NH₄, DIC = :j_DIC, DON = :eⁿ, DOC = :eᶜ, bPON = :νⁿ, bPOC = :νᶜ, O₂ = :j_OXY)
 
@@ -283,7 +284,7 @@ function defineparticles(initials, n)
             throw(ArgumentError("Invalid initial values given for $var, must be a single number or vector of length n"))
         end
     end
-    return StructArray{Particle}((x̄₀[1], x̄₀[2], x̄₀[3], zeros(n), zeros(n), zeros(n), x̄₀[4], x̄₀[5], x̄₀[6], [zeros(n) for i in 1:13]...))
+    return StructArray{Particle}((x̄₀[1], x̄₀[2], x̄₀[3], zeros(n), zeros(n), zeros(n), x̄₀[4], x̄₀[5], x̄₀[6], [zeros(n) for i in 1:14]...))
 end
 
 @inline no_dynamics(args...) = nothing
@@ -337,7 +338,7 @@ function setup(; n, x₀, y₀, z₀, A₀, N₀, C₀, latitude,
     # fills out particles in case we weren't given arrays
     particles = defineparticles((x₀=x₀, y₀=y₀, z₀=z₀, A₀=A₀, N₀=N₀, C₀=C₀), n)
 
-    property_dependencies = (:A, :N, :C, :NO₃, :NH₄, :PAR)
+    property_dependencies = (:A, :N, :C, :NO₃, :NH₄, :DIC, :PAR)
     λ_arr = generate_seasonality(latitude)
     parameters = merge(paramset, (λ=λ_arr, ))
     diagnostic_properties = (:A, :N, :C, :j_NO₃, :j_NH₄, :j_DIC, :j_OXY, :eⁿ, :eᶜ, :νⁿ, :νᶜ) # all diagnostic for the sake of enforcing C limit
