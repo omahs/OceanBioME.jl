@@ -7,7 +7,7 @@
 ##### Carbonate chemistry to determine pCO₂
 #####
 
-@inline CA_eq(H, params) = params.ALK - (params.KB/(params.KB + H)) * params.Boron
+@inline CA_eq(H, params) = params.ALK - (params.KB/(params.KB + H)) * params.Boron - params.KW/H + H
 @inline H_eq(H, params) = CA_eq(H, params)*H^2 + params.K1*(CA_eq(H, params)-params.DIC)*H + params.K1*params.K2*(CA_eq(H, params)-2*params.DIC)
 
 function pCO₂(DIC, ALK, T, S, ρₒ, pH)
@@ -21,10 +21,11 @@ function pCO₂(DIC, ALK, T, S, ρₒ, pH)
     K1 = exp(2.18867 - 2275.036/T - 1.468591*log(T) + (-0.138681 - 9.33291/T)*sqrt(S) + 0.0726483*S - 0.00574938*S^1.5)
     K2 = exp(-0.84226 - 3741.1288/T -1.437139*log(T) + (-0.128417 - 24.41239/T)*sqrt(S) + 0.1195308*S - 0.0091284*S^1.5)
     KB = exp( (-8966.90 - 2890.51*sqrt(S) - 77.942*S + 1.726*S^1.5 - 0.0993*S^2)/T + (148.0248 + 137.194*sqrt(S) + 1.62247*S) + (-24.4344 - 25.085*sqrt(S) - 0.2474*S)*log(T) + 0.053105*sqrt(S)*T)
+    KW = exp(148.9802 - 13847.26/T - 23.6521*log(T) + (-5.977 + 118.67/T + 1.0495*log(T))*sqrt(S) - 0.01615*S)
 
     H = 10^(-pH) # initial guess from arg list
 
-    p = (DIC=DIC, ALK=ALK, K0=K0, K1=K1, K2=K2, KB=KB, Boron=Boron)
+    p = (DIC=DIC, ALK=ALK, K0=K0, K1=K1, K2=K2, KB=KB, KW=KW, Boron=Boron)
 
     H = find_zero(H_eq, H, atol=1e-100, p=p)
     CA = CA_eq(H, p)
@@ -68,7 +69,7 @@ end
                                 O₂ = (A=1953.4, B=128.0, C=3.9918, D=0.050091))[gas],
                 solubility_params::βP = (CO₂ = (A₁=-60.2409, A₂=93.4517, A₃=23.3585, B₁=0.023517, B₂=-0.023656, B₃=0.0047036),
                                     O₂ = (A₁=-58.3877, A₂=85.8079, A₃=23.8439, B₁=-0.034892, B₂=0.015568, B₃=-0.0019387))[gas],
-                pH_initial_guess::FT = 8.0,
+                pH_initial_guess::FT = 14.0,
                 ocean_density::FT = 1026, # kg/m³
                 air_concentration::AC = (CO₂ = 413.4, O₂ = 9352.7)[gas], # ppmv, mmolO₂/m³ (20.95 mol O₂/mol air, 0.0224m^3/mol air)
                 air_pressure::FT = 1.0, # atm
@@ -109,7 +110,7 @@ function GasExchange(;gas,
                                       O₂ = (A=1953.4, B=128.0, C=3.9918, D=0.050091))[gas],
                       solubility_params::βP = (CO₂ = (A₁=-60.2409, A₂=93.4517, A₃=23.3585, B₁=0.023517, B₂=-0.023656, B₃=0.0047036),
                                             O₂ = (A₁=-58.3877, A₂=85.8079, A₃=23.8439, B₁=-0.034892, B₂=0.015568, B₃=-0.0019387))[gas],
-                      pH_initial_guess::FT = 8.0,
+                      pH_initial_guess::FT = 14.0,
                       ocean_density::FT = 1026.0, # kg/m³
                       air_concentration::AC = (CO₂ = 413.4, O₂ = 9352.7)[gas], # ppmv, mmolO₂/m³ (20.95 mol O₂/mol air, 0.0224m^3/mol air)
                       air_pressure::AP = 1.0, # atm
