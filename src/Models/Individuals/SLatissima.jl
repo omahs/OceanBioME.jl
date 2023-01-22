@@ -88,7 +88,7 @@ end
 function equations(x::AbstractFloat, y::AbstractFloat, z::AbstractFloat, t::AbstractFloat, A::AbstractFloat, N::AbstractFloat, C::AbstractFloat, NO₃::AbstractFloat, NH₄::AbstractFloat, DIC::AbstractFloat, T::AbstractFloat, S::AbstractFloat, irr::AbstractFloat, u::AbstractFloat, params, Δt::AbstractFloat)
     if !iszero(A)
         irr /= 3.99e-10*545e12/(1day) #W/m²/s to einstein/m²/day
-        p = _p(T, irr, params) * DIC / (DIC + 210)  # consider carbon limit photosynthesis
+        p = _p(T, irr, params) * max(0.0, DIC / (DIC + 0.4))  # carbon limited photosynthesis, Modeling the Growth of Sugar Kelp (Saccharina latissima) in Aquaculture Systems using Dynamic Energy Budget Theory, Table 2
         e = _e(C, params)
         ν  = _ν(A, params)
 
