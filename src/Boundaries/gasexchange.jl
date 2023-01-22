@@ -23,11 +23,11 @@ function pCO₂(DIC, ALK, T, S, ρₒ, pH)
     KB = exp( (-8966.90 - 2890.51*sqrt(S) - 77.942*S + 1.726*S^1.5 - 0.0993*S^2)/T + (148.0248 + 137.194*sqrt(S) + 1.62247*S) + (-24.4344 - 25.085*sqrt(S) - 0.2474*S)*log(T) + 0.053105*sqrt(S)*T)
     KW = exp(148.9802 - 13847.26/T - 23.6521*log(T) + (-5.977 + 118.67/T + 1.0495*log(T))*sqrt(S) - 0.01615*S)
 
-    H = 10^(-pH) # initial guess from arg list
+    #H = 10^(-pH) # initial guess from arg list
 
     p = (DIC=DIC, ALK=ALK, K0=K0, K1=K1, K2=K2, KB=KB, KW=KW, Boron=Boron)
 
-    H = find_zero(H_eq, H, atol=1e-100, p=p)
+    H = find_zero(H_eq, (1e-14, 1), atol=1e-100, p=p)
     CA = CA_eq(H, p)
     
     #pH = -log10(H)
