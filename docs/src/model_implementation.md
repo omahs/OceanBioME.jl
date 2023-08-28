@@ -5,7 +5,7 @@ Here we will describe how OceanBioME defines biogeochemical (BGC) models, how th
 ## Model structure
 OceanBioME BGC models are `struct`s of type `ContinuousFormBiogeochemistry`, which is of abstract type `AbstractContinuousFormBiogeochemistry` from Oceananigans. In Oceananigans this describes BGC models which are defined using continuous functions (depending continuously on ``x``, ``y``, and ``z``) rather than discrete functions (depending on ``i``, ``j``, ``k``). This allows the user to implement the BGC model equations without worrying about details of the grid or discretization, and then Oceananigans handles the rest.
 
-OceanBioME's `ContinuousFormBiogeochemistry` adds a layer on top of this which makes it easy to add [light attenuation models](@ref light), [sediment](@ref sediment), and [biologically active particles](@ref individuals) (or indivdiual-based models). OceanBioME's `ContinuousFormBiogeochemistry` includes parameters in which the types of these components are stored. This means that these model components will automatically be integrated into the BGC model without having to add new methods to call Oceananigans functions. 
+OceanBioME's `ContinuousFormBiogeochemistry` adds a layer on top of this which makes it easy to add [light attenuation models](@ref light), [sediment](@ref sediment), and [biologically active particles](@ref individuals) (or individual-based models). OceanBioME's `ContinuousFormBiogeochemistry` includes parameters in which the types of these components are stored. This means that these model components will automatically be integrated into the BGC model without having to add new methods to call Oceananigans functions. 
 
 ## Implementing a model
 
@@ -48,7 +48,7 @@ We then define our `struct` with the model parameters, as well as slots for the 
 end
 ```
 
-Here, we use descriptive names for the parameters. Below, each of these parameters correspond to a symbol (or letter) which is more convenient mathematically and when defining the BGC model functions. In the above code we used `@kwdef` to set default values for the models so that we don't have to set all of these parameters each time we use the model. The default parameter values can optionally be over-ridden by the user when running the model. We have also included a `sinking_velocity` field in the parameter set to demonstrate how we can get tracers (e.g. detritus) to sink. We also need to define some functions so that OceanBioME and Oceananigans know what tracers and auxiliary fields (e.g. light intensity) we will use:
+Here, we use descriptive names for the parameters. Below, each of these parameters corresponds to a symbol (or letter) which is more convenient mathematically and when defining the BGC model functions. In the above code we used `@kwdef` to set default values for the models so that we don't have to set all of these parameters each time we use the model. The default parameter values can optionally be overridden by the user when running the model. We have also included a `sinking_velocity` field in the parameter set to demonstrate how we can get tracers (e.g. detritus) to sink. We also need to define some functions so that OceanBioME and Oceananigans know what tracers and auxiliary fields (e.g. light intensity) we will use:
 
 ```@example implementing
 required_biogeochemical_tracers(::NutrientPhytoplankton) = (:N, :P, :T)
@@ -58,7 +58,7 @@ required_biogeochemical_auxiliary_fields(::NutrientPhytoplankton) = (:PAR, )
 biogeochemical_auxiliary_fields(bgc::NutrientPhytoplankton) = biogeochemical_auxiliary_fields(bgc.light_attenuation_model)
 ```
 
-Next, we define the functions that specify how the phytoplankton ``P`` evolve. In the absence of advection and diffusion (both of which are handled by Oceananigans), we want the phytoplankton to evolve at the rate given by:
+Next, we define the functions that specify how the phytoplankton ``P`` evolves. In the absence of advection and diffusion (both of which are handled by Oceananigans), we want the phytoplankton to evolve at the rate given by:
 ```math
 \frac{\partial P}{\partial t} = \mu g(T) f(N) h(PAR) P - mP - bP^2,
 ```
@@ -207,7 +207,7 @@ So now we know it works.
 
 ### Phytoplankton sinking
 
-Now that we have a fully working BGC model we might want to add some more features. Another aspect that is easy to add is negative buoyancy (sinking). To-do this all we do is add a method to the Oceananigans function `biogeochemical_drift_velocity`, and we use `::Val{:P}` to specify that only phytoplankton will sink. Above, we set the default value of the parameter `bgc.sinking_velocity`. We can override this when we call the BGC model like `NutrientPhytoplankton(; light_attenuation_model, sinking_velocity = 1/day)`. Note that before using `biogeochemical_drift_velocity`, we need to import several `Fields` from Oceananigans:
+Now that we have a fully working BGC model we might want to add some more features. Another aspect that is easy to add is negative buoyancy (sinking). To do this all we do is add a method to the Oceananigans function `biogeochemical_drift_velocity`, and we use `::Val{:P}` to specify that only phytoplankton will sink. Above, we set the default value of the parameter `bgc.sinking_velocity`. We can override this when we call the BGC model like `NutrientPhytoplankton(; light_attenuation_model, sinking_velocity = 1/day)`. Note that before using `biogeochemical_drift_velocity`, we need to import several `Fields` from Oceananigans:
 
 ```@example implementing
 using Oceananigans.Fields: ZeroField, ConstantField
